@@ -33,7 +33,7 @@ import { isInPortrait, isTouchOnly } from "./utils";
 
 import EntryGUI from "./ui/EntryGUI.json" assert { type: "json" };
 
-class App {
+export class Room {
   engine: Engine;
   scene: Scene;
   canvas: HTMLCanvasElement;
@@ -220,4 +220,3 @@ class App {
     });
   }
 }
-new App();
