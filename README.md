@@ -1,1 +1,1 @@
-# First-person Template for Babylon.js
+# 2.5D Meet
