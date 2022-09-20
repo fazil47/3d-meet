@@ -34,12 +34,15 @@ import { isInPortrait, isTouchOnly } from "./utils";
 import EntryGUI from "./ui/EntryGUI.json" assert { type: "json" };
 
 export class Room {
+  roomId: string;
   engine: Engine;
   scene: Scene;
   canvas: HTMLCanvasElement;
   camera: FreeCamera;
 
-  constructor() {
+  constructor(roomId: string) {
+    this.roomId = roomId;
+
     // create the canvas html element and attach it to the webpage
     this.canvas = document.createElement("canvas");
     this.canvas.style.width = "100%";
@@ -107,6 +110,8 @@ export class Room {
 
     adt.parseSerializedObject(EntryGUI);
     const entryGUI = adt.getControlByName("EntryGUI") as Control;
+
+    // TODO: Set roomId in GUI
 
     // Show landscape instruction only on touch only devices
     const landscapeInstructionText = adt.getControlByName(

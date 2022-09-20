@@ -4,7 +4,10 @@
   "description": "Backend for 2.5D Meet",
   "main": "index.js",
   "scripts": {
-    "start": "nodemon server.js"
+    "start": "nodemon server.js",
+    "babylon-start": "cd babylon_frontend && npm start",
+    "babylon-build": "cd babylon_frontend && npm run build",
+    "prod": "concurrently \"npm run babylon-build\" \"npm run start\""
   },
   "keywords": [],
   "author": "Fazil Babu",
