@@ -12,10 +12,10 @@ app.get("/", (req, res) => {
 });
 
 app.get("/new", (req, res) => {
-  res.redirect(`/${uuidV4()}`);
+  res.redirect(`/room/${uuidV4()}`);
 });
 
-app.get("/:room", (req, res) => {
+app.get("/room/:room", (req, res) => {
   res.render("room", { roomId: req.params.room });
 });
 
