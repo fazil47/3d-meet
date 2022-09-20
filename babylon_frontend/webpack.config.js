@@ -2,19 +2,18 @@ const path = require("path");
 const fs = require("fs");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const appDirectory = fs.realpathSync(process.cwd());
+const parentDirectory = path.join(appDirectory, "../");
 
 module.exports = {
   entry: path.resolve(appDirectory, "src/app.ts"), //path to the main .ts file
   output: {
     filename: "js/bundleName.js", //name for the js file that is created/compiled in memory
+    path: path.resolve(parentDirectory, "dist"), //path to the folder where the js file is created/compiled in memory
     clean: true,
   },
   resolve: {
     extensions: [".tsx", ".ts", ".js"],
-    modules: [
-      "Assets/generated",
-      "node_modules",
-    ],
+    modules: ["Assets/generated", "node_modules"],
   },
   devServer: {
     host: "0.0.0.0",
@@ -38,6 +37,7 @@ module.exports = {
     new HtmlWebpackPlugin({
       inject: true,
       template: path.resolve(appDirectory, "public/index.html"),
+      filename: "index.ejs",
     }),
   ],
   mode: "development",
