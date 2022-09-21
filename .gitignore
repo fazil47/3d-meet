@@ -1,7 +1,3 @@
-# babylon_frontend build output files
-views/js
-views/room.ejs
-
 # Logs
 logs
 *.log

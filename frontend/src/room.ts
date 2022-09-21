@@ -34,14 +34,12 @@ import { isInPortrait, isTouchOnly } from "./utils";
 import EntryGUI from "./ui/EntryGUI.json" assert { type: "json" };
 
 export class Room {
-  roomId: string;
   engine: Engine;
   scene: Scene;
   canvas: HTMLCanvasElement;
   camera: FreeCamera;
 
-  constructor(roomId: string) {
-    this.roomId = roomId;
+  constructor() {
 
     // create the canvas html element and attach it to the webpage
     this.canvas = document.createElement("canvas");
