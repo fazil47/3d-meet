@@ -4,16 +4,15 @@
   "description": "Backend for 2.5D Meet",
   "main": "index.js",
   "scripts": {
-    "start": "nodemon server.js"
+    "start": "nodemon server.js",
+    "prod": "node server.js"
   },
   "keywords": [],
   "author": "Fazil Babu",
   "license": "ISC",
   "dependencies": {
-    "ejs": "^3.1.8",
     "express": "^4.18.1",
-    "socket.io": "^4.5.1",
-    "uuid": "^8.3.2"
+    "socket.io": "^4.5.2"
   },
   "devDependencies": {
     "nodemon": "^2.0.19"

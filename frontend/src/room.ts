@@ -21,25 +21,39 @@ import {
   Matrix,
   Axis,
   FreeCameraVirtualJoystickInput,
+  Sound,
 } from "@babylonjs/core";
 import {
   AdvancedDynamicTexture,
   Control,
   Ellipse,
   Button,
+  InputText,
 } from "@babylonjs/gui";
 import Assets from "@babylonjs/assets";
+
+// Imports for multiuser support
+import { v4 as uuidV4 } from "uuid";
+import { Peer, MediaConnection } from "peerjs";
+import { io, Socket } from "socket.io-client";
+
 import { isInPortrait, isTouchOnly } from "./utils";
 
 import EntryGUI from "./ui/EntryGUI.json" assert { type: "json" };
 
 export class Room {
+  roomId: string;
+  socket: Socket;
+  selfPeer: Peer;
+  peers: { [key: string]: MediaConnection };
   engine: Engine;
   scene: Scene;
   canvas: HTMLCanvasElement;
   camera: FreeCamera;
 
   constructor() {
+    this.roomId = "";
+    this.peers = {};
 
     // create the canvas html element and attach it to the webpage
     this.canvas = document.createElement("canvas");
@@ -56,6 +70,9 @@ export class Room {
     this.createEnvironment();
     this.createGUI();
     this.createDebugLayer();
+
+    // setup websocket connection
+    [this.socket, this.selfPeer] = this.setupConnection();
 
     // Event listener to resize the babylon engine when the window is resized
     window.addEventListener("resize", () => {
@@ -109,12 +126,13 @@ export class Room {
     adt.parseSerializedObject(EntryGUI);
     const entryGUI = adt.getControlByName("EntryGUI") as Control;
 
-    // TODO: Set roomId in GUI
+    // Get a reference to the RoomIdInput control to later set roomId
+    const roomIdInput = adt.getControlByName("RoomIdInput") as InputText;
 
     // Show landscape instruction only on touch only devices
     const landscapeInstructionText = adt.getControlByName(
       "LandscapeInstructionText"
-    );
+    ) as Control;
     if (landscapeInstructionText) {
       if (!isTouchOnly()) {
         landscapeInstructionText.isVisible = false;
@@ -130,6 +148,13 @@ export class Room {
     const enterButton = adt.getControlByName("EnterButton");
     if (enterButton) {
       enterButton.onPointerClickObservable.add(() => {
+        // Set roomId to the value of the RoomIdInput control
+        if (roomIdInput && roomIdInput.text !== roomIdInput.promptMessage) {
+          this.roomId = roomIdInput.text;
+        } else {
+          this.roomId = uuidV4();
+        }
+
         // Go into fullscreen
         document.documentElement.requestFullscreen();
 
@@ -207,6 +232,89 @@ export class Room {
     skyboxMaterial.diffuseColor = new Color3(0, 0, 0);
     skyboxMaterial.specularColor = new Color3(0, 0, 0);
     skybox.material = skyboxMaterial;
+  }
+
+  setupConnection(): [Socket, Peer] {
+    // Connect to websocket server
+    const socket = io("ws://localhost:3000");
+
+    // Create to peer server
+    const selfPeer = new Peer({
+      host: "localhost",
+      port: 3001,
+    });
+
+    // Setup peer object event listeners
+    this.selfPeer.on("open", (id) => {
+      socket.emit("join-room", this.roomId, id);
+    });
+
+    // Remove participant from scene when they disconnect
+    socket.on("user-disconnected", (userId) => {
+      if (this.peers[userId]) {
+        this.peers[userId].close();
+      }
+    });
+
+    return [socket, selfPeer];
+  }
+
+  async setupAudioInput(): Promise<void> {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: false,
+      audio: true,
+    });
+
+    this.addAudioStream(stream);
+
+    this.selfPeer.on("call", (call) => {
+      call.answer(stream);
+      call.on("stream", (userAudioStream) => {
+        this.addAudioStream(userAudioStream);
+      });
+
+      call.on("close", () => {
+        // TODO: Remove participant and their audio stream
+      });
+
+      this.peers[call.peer] = call;
+    });
+
+    this.socket.emit("user-ready");
+
+    this.socket.on("user-connected", (userId) => {
+      this.connectToNewUser(userId, stream);
+    });
+  }
+
+  connectToNewUser(userId: string, stream: MediaStream) {
+    const call = this.selfPeer.call(userId, stream);
+
+    call.on("stream", (userAudioStream) => {
+      this.addAudioStream(userAudioStream);
+    });
+
+    call.on("close", () => {
+      // TODO: Remove participant and their audio stream
+    });
+
+    this.peers[userId] = call;
+  }
+
+  addAudioStream(stream: MediaStream) {
+    const voice = new Sound(
+      "voice",
+      stream,
+      this.scene,
+      () => {
+        // TODO: use readyToPlayCallback
+      },
+      {
+        spatialSound: true,
+        streaming: true,
+        autoplay: true,
+      }
+    );
   }
 
   createDebugLayer(): void {
