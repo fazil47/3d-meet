@@ -19,6 +19,7 @@ io.on("connection", (socket) => {
       socket.broadcast.to(roomId).emit("user-disconnected", userId);
     });
 
+    // Broadcast senders position and rotation to all users except the sender
     socket.on("client-update", (position, rotation) => {
       socket.broadcast
         .to(roomId)

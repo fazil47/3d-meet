@@ -22,6 +22,8 @@ import {
   Axis,
   FreeCameraVirtualJoystickInput,
   Sound,
+  Mesh,
+  CreateCapsule,
 } from "@babylonjs/core";
 import {
   AdvancedDynamicTexture,
@@ -41,11 +43,29 @@ import { isInPortrait, isTouchOnly } from "./utils";
 
 import EntryGUI from "./ui/EntryGUI.json" assert { type: "json" };
 
+class Participant {
+  id: string;
+  name: string;
+  mesh: Mesh;
+
+  constructor(id: string, name: string, mesh: Mesh) {
+    this.id = id;
+    this.name = name;
+    this.mesh = mesh;
+  }
+
+  destroy() {
+    this.mesh.dispose();
+  }
+}
+
 export class Room {
   roomId: string;
-  socket: Socket;
-  selfPeer: Peer;
-  peers: { [key: string]: MediaConnection };
+  socket: Socket | null;
+  selfPeer: Peer | null;
+  peers: {
+    [peerId: string]: { stream: MediaConnection; participant: Participant };
+  };
   engine: Engine;
   scene: Scene;
   canvas: HTMLCanvasElement;
@@ -72,7 +92,9 @@ export class Room {
     this.createDebugLayer();
 
     // setup websocket connection
-    [this.socket, this.selfPeer] = this.setupConnection();
+    // [this.socket, this.selfPeer] = this.setupConnection();
+    this.socket = null;
+    this.selfPeer = null;
 
     // Event listener to resize the babylon engine when the window is resized
     window.addEventListener("resize", () => {
@@ -171,6 +193,8 @@ export class Room {
 
         // Hide entry GUI
         entryGUI.isVisible = false;
+
+        [this.socket, this.selfPeer] = this.setupConnection();
       });
     }
   }
@@ -241,7 +265,8 @@ export class Room {
     // Remove participant from scene when they disconnect
     socket.on("user-disconnected", (userId) => {
       if (this.peers[userId]) {
-        this.peers[userId].close();
+        this.peers[userId].stream.close();
+        this.peers[userId].participant.destroy();
       }
     });
 
@@ -262,12 +287,45 @@ export class Room {
           rotation: this.camera.rotation,
         });
       }, 1000 / 60);
+
+      // Receive other users' position and rotation from the server
+      socket.on(
+        "server-update",
+        (userId: string, position: Vector3, rotation: Vector3) => {
+          console.log(userId, position, rotation);
+
+          if (userId === selfPeer.id) return;
+
+          Object.keys(this.peers).forEach((peerId) => {
+            if (peerId === userId && this.peers[peerId]) {
+              this.peers[peerId].participant.mesh.position = new Vector3(
+                position._x,
+                position._y,
+                position._z
+              );
+              this.peers[peerId].participant.mesh.rotation = new Vector3(
+                rotation._x,
+                rotation._y,
+                rotation._z
+              );
+            }
+          });
+        }
+      );
+
+      this.setupAudioInput();
+      console.log("Emitting user-ready");
+      socket.emit("user-ready");
     });
 
     return [socket, selfPeer];
   }
 
   async setupAudioInput(): Promise<void> {
+    if (!this.socket || !this.selfPeer) {
+      return;
+    }
+
     const stream = await navigator.mediaDevices.getUserMedia({
       video: false,
       audio: true,
@@ -285,18 +343,32 @@ export class Room {
         // TODO: Remove participant and their audio stream
       });
 
-      this.peers[call.peer] = call;
+      const newParticipantMesh = CreateCapsule(call.peer, {}, this.scene);
+      newParticipantMesh.position = new Vector3(0, 2.5, 0);
+
+      this.peers[call.peer] = {
+        stream: call,
+        participant: new Participant(
+          call.peer,
+          "TODO: Change this",
+          newParticipantMesh
+        ),
+      };
     });
 
-    this.socket.emit("user-ready");
-
     this.socket.on("user-connected", (userId) => {
-      this.connectToNewUser(userId, stream);
+      this.connectToNewParticipant(userId, stream);
     });
   }
 
-  connectToNewUser(userId: string, stream: MediaStream) {
-    const call = this.selfPeer.call(userId, stream);
+  connectToNewParticipant(participantId: string, stream: MediaStream) {
+    if (!this.socket || !this.selfPeer) {
+      return;
+    }
+
+    const call = this.selfPeer.call(participantId, stream);
+
+    console.log("call", call);
 
     call.on("stream", (userAudioStream) => {
       this.addAudioStream(userAudioStream);
@@ -306,23 +378,33 @@ export class Room {
       // TODO: Remove participant and their audio stream
     });
 
-    this.peers[userId] = call;
+    const newParticipantMesh = CreateCapsule(participantId, {}, this.scene);
+    newParticipantMesh.position = new Vector3(0, 2.5, 0);
+
+    this.peers[participantId] = {
+      stream: call,
+      participant: new Participant(
+        participantId,
+        "TODO: Change this",
+        newParticipantMesh
+      ),
+    };
   }
 
   addAudioStream(stream: MediaStream) {
-    const voice = new Sound(
-      "voice",
-      stream,
-      this.scene,
-      () => {
-        // TODO: use readyToPlayCallback
-      },
-      {
-        spatialSound: true,
-        streaming: true,
-        autoplay: true,
-      }
-    );
+    // const voice = new Sound(
+    //   "voice",
+    //   stream,
+    //   this.scene,
+    //   () => {
+    //     // TODO: use readyToPlayCallback
+    //   },
+    //   {
+    //     spatialSound: true,
+    //     streaming: true,
+    //     autoplay: true,
+    //   }
+    // );
   }
 
   createDebugLayer(): void {
