@@ -238,6 +238,13 @@ export class Room {
     // Connect to websocket server
     const socket = io("ws://localhost:3000");
 
+    // Remove participant from scene when they disconnect
+    socket.on("user-disconnected", (userId) => {
+      if (this.peers[userId]) {
+        this.peers[userId].close();
+      }
+    });
+
     // Create to peer server
     const selfPeer = new Peer({
       host: "localhost",
@@ -245,15 +252,16 @@ export class Room {
     });
 
     // Setup peer object event listeners
-    this.selfPeer.on("open", (id) => {
+    selfPeer.on("open", (id) => {
       socket.emit("join-room", this.roomId, id);
-    });
 
-    // Remove participant from scene when they disconnect
-    socket.on("user-disconnected", (userId) => {
-      if (this.peers[userId]) {
-        this.peers[userId].close();
-      }
+      // Send this user's position and rotation to the server every 1/60 s
+      setInterval(() => {
+        socket.emit("client-update", {
+          position: this.camera.position,
+          rotation: this.camera.rotation,
+        });
+      }, 1000 / 60);
     });
 
     return [socket, selfPeer];
