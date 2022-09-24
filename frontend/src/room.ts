@@ -47,34 +47,40 @@ class Participant {
   id: string;
   name: string;
   mesh: Mesh;
+  voice: Sound | null;
 
   constructor(id: string, name: string, mesh: Mesh) {
     this.id = id;
     this.name = name;
     this.mesh = mesh;
+    this.voice = null;
+  }
+
+  setVoice(voice: Sound) {
+    this.voice = voice;
+    voice.attachToMesh(this.mesh);
   }
 
   destroy() {
     this.mesh.dispose();
+    this.voice?.dispose();
   }
 }
 
 export class Room {
-  roomId: string;
-  socket: Socket | null;
-  selfPeer: Peer | null;
+  roomId: string = "";
+  socket: Socket | null = null;
+  selfPeer: Peer | null = null;
+  audioStream: MediaStream | null = null;
   peers: {
     [peerId: string]: { stream: MediaConnection; participant: Participant };
-  };
+  } = {};
   engine: Engine;
   scene: Scene;
   canvas: HTMLCanvasElement;
   camera: FreeCamera;
 
   constructor() {
-    this.roomId = "";
-    this.peers = {};
-
     // create the canvas html element and attach it to the webpage
     this.canvas = document.createElement("canvas");
     this.canvas.style.width = "100%";
@@ -90,11 +96,6 @@ export class Room {
     this.createEnvironment();
     this.createGUI();
     this.createDebugLayer();
-
-    // setup websocket connection
-    // [this.socket, this.selfPeer] = this.setupConnection();
-    this.socket = null;
-    this.selfPeer = null;
 
     // Event listener to resize the babylon engine when the window is resized
     window.addEventListener("resize", () => {
@@ -270,7 +271,7 @@ export class Room {
       }
     });
 
-    // Create to peer server
+    // Connect to peer server
     const selfPeer = new Peer({
       host: "localhost",
       port: 3001,
@@ -318,85 +319,106 @@ export class Room {
       return;
     }
 
-    const stream = await navigator.mediaDevices.getUserMedia({
+    this.audioStream = await navigator.mediaDevices.getUserMedia({
       video: false,
       audio: true,
     });
 
-    this.addAudioStream(stream);
+    // this.addAudioStream(this.selfPeer.id, stream);
 
     this.selfPeer.on("call", (call) => {
-      call.answer(stream);
-      call.on("stream", (userAudioStream) => {
-        this.addAudioStream(userAudioStream);
-      });
+      if (this.audioStream === null) return;
 
+      call.answer(this.audioStream);
+      call.on("stream", (userAudioStream) => {
+        this.addAudioStream(call.peer, userAudioStream);
+      });
       call.on("close", () => {
-        // TODO: Remove participant and their audio stream
+        if (this.peers[call.peer]) {
+          this.peers[call.peer].stream.close();
+          this.peers[call.peer].participant.destroy();
+        }
       });
 
       const newParticipantMesh = CreateCapsule(call.peer, {}, this.scene);
       newParticipantMesh.position = new Vector3(0, 2.5, 0);
 
+      const newParticipant = new Participant(
+        call.peer,
+        "TODO: Change this",
+        newParticipantMesh
+      );
+
       this.peers[call.peer] = {
         stream: call,
-        participant: new Participant(
-          call.peer,
-          "TODO: Change this",
-          newParticipantMesh
-        ),
+        participant: newParticipant,
       };
     });
 
     this.socket.on("user-connected", (userId) => {
-      this.connectToNewParticipant(userId, stream);
+      this.connectToNewParticipant(userId);
+    });
+
+    this.socket.on("user-disconnected", (userId) => {
+      if (this.peers[userId]) {
+        this.peers[userId].stream.close();
+        this.peers[userId].participant.destroy();
+      }
     });
 
     this.socket.emit("user-ready");
   }
 
-  connectToNewParticipant(participantId: string, stream: MediaStream) {
-    if (!this.socket || !this.selfPeer) {
+  connectToNewParticipant(participantId: string) {
+    if (!this.socket || !this.selfPeer || !this.audioStream) {
       return;
     }
 
-    const call = this.selfPeer.call(participantId, stream);
-
+    const call = this.selfPeer.call(participantId, this.audioStream);
     call.on("stream", (userAudioStream) => {
-      this.addAudioStream(userAudioStream);
+      this.addAudioStream(participantId, userAudioStream);
     });
-
     call.on("close", () => {
-      // TODO: Remove participant and their audio stream
+      if (this.peers[participantId]) {
+        this.peers[participantId].stream.close();
+        this.peers[participantId].participant.destroy();
+      }
     });
 
     const newParticipantMesh = CreateCapsule(participantId, {}, this.scene);
     newParticipantMesh.position = new Vector3(0, 2.5, 0);
 
+    const newParticipant = new Participant(
+      participantId,
+      "TODO: Change this",
+      newParticipantMesh
+    );
+
     this.peers[participantId] = {
       stream: call,
-      participant: new Participant(
-        participantId,
-        "TODO: Change this",
-        newParticipantMesh
-      ),
+      participant: newParticipant,
     };
   }
 
-  addAudioStream(stream: MediaStream) {
-    // const voice = new Sound(
-    //   "voice",
-    //   stream,
-    //   this.scene,
-    //   () => {
-    //     // TODO: use readyToPlayCallback
-    //   },
-    //   {
-    //     spatialSound: true,
-    //     streaming: true,
-    //     autoplay: true,
-    //   }
-    // );
+  addAudioStream(participantId: string, stream: MediaStream) {
+    // Remote media streams don't work in Chromium browsers if they are not attached to an HTML element
+    // So it attach to an audio element first
+    const audioElement = document.createElement("audio");
+    audioElement.srcObject = stream;
+
+    const voice = new Sound(
+      "voice",
+      audioElement.srcObject,
+      this.scene,
+      () => {
+        this.peers[participantId].participant.setVoice(voice);
+      },
+      {
+        spatialSound: true,
+        streaming: true,
+        autoplay: true,
+      }
+    );
   }
 
   createDebugLayer(): void {
