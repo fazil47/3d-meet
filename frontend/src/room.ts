@@ -282,40 +282,36 @@ export class Room {
 
       // Send this user's position and rotation to the server every 1/60 s
       setInterval(() => {
-        socket.emit("client-update", {
-          position: this.camera.position,
-          rotation: this.camera.rotation,
-        });
+        socket.emit(
+          "client-update",
+          this.camera.position,
+          this.camera.rotation
+        );
       }, 1000 / 60);
 
       // Receive other users' position and rotation from the server
       socket.on(
         "server-update",
         (userId: string, position: Vector3, rotation: Vector3) => {
-          console.log(userId, position, rotation);
-
           if (userId === selfPeer.id) return;
 
-          Object.keys(this.peers).forEach((peerId) => {
-            if (peerId === userId && this.peers[peerId]) {
-              this.peers[peerId].participant.mesh.position = new Vector3(
-                position._x,
-                position._y,
-                position._z
-              );
-              this.peers[peerId].participant.mesh.rotation = new Vector3(
-                rotation._x,
-                rotation._y,
-                rotation._z
-              );
-            }
-          });
+          if (this.peers[userId]) {
+            this.peers[userId].participant.mesh.position = new Vector3(
+              position._x,
+              position._y,
+              position._z
+            );
+
+            this.peers[userId].participant.mesh.rotation = new Vector3(
+              rotation._x,
+              rotation._y,
+              rotation._z
+            );
+          }
         }
       );
 
       this.setupAudioInput();
-      console.log("Emitting user-ready");
-      socket.emit("user-ready");
     });
 
     return [socket, selfPeer];
@@ -359,6 +355,8 @@ export class Room {
     this.socket.on("user-connected", (userId) => {
       this.connectToNewParticipant(userId, stream);
     });
+
+    this.socket.emit("user-ready");
   }
 
   connectToNewParticipant(participantId: string, stream: MediaStream) {
@@ -367,8 +365,6 @@ export class Room {
     }
 
     const call = this.selfPeer.call(participantId, stream);
-
-    console.log("call", call);
 
     call.on("stream", (userAudioStream) => {
       this.addAudioStream(userAudioStream);

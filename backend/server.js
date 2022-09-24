@@ -9,13 +9,19 @@ const io = require("socket.io")(server, {
 
 io.on("connection", (socket) => {
   socket.on("join-room", (roomId, userId) => {
+    console.log(`User ${userId} joined room ${roomId}`);
+
     socket.join(roomId);
 
     socket.on("user-ready", () => {
+      console.log(`User ${userId} is ready`);
+
       socket.broadcast.to(roomId).emit("user-connected", userId);
     });
 
     socket.on("disconnect", () => {
+      console.log(`User ${userId} left room ${roomId}`);
+
       socket.broadcast.to(roomId).emit("user-disconnected", userId);
     });
 
@@ -24,7 +30,6 @@ io.on("connection", (socket) => {
       socket.broadcast
         .to(roomId)
         .emit("server-update", userId, position, rotation);
-      console.log(`client update from user ${userId}: `, position, rotation);
     });
   });
 });
