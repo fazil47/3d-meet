@@ -302,11 +302,7 @@ export class Room {
               position._z
             );
 
-            this.peers[userId].participant.mesh.rotation = new Vector3(
-              rotation._x,
-              rotation._y,
-              rotation._z
-            );
+            this.peers[userId].participant.mesh.rotation.y = rotation._y;
           }
         }
       );
