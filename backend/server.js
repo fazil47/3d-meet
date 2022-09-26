@@ -2,10 +2,12 @@ const express = require("express");
 const app = express();
 
 const server = require("http").Server(app);
-
 const io = require("socket.io")(server, {
   cors: { origin: "http://localhost:8080", methods: ["GET", "POST"] },
 });
+
+const { PeerServer } = require("peer");
+const peerServer = PeerServer({ port: 3001, path: "" });
 
 io.on("connection", (socket) => {
   socket.on("join-room", (roomId, userId) => {

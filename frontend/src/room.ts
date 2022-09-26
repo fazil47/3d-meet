@@ -58,7 +58,9 @@ class Participant {
 
   setVoice(voice: Sound) {
     this.voice = voice;
-    voice.attachToMesh(this.mesh);
+    this.voice.attachToMesh(this.mesh);
+    this.voice.setDirectionalCone(90, 180, 0);
+    this.voice.setLocalDirectionToMesh(this.mesh.forward);
   }
 
   destroy() {
