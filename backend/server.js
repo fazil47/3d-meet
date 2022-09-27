@@ -1,9 +1,11 @@
+require("dotenv").config();
+
 const express = require("express");
 const app = express();
 
 const server = require("http").Server(app);
 const io = require("socket.io")(server, {
-  cors: { origin: "http://localhost:8080", methods: ["GET", "POST"] },
+  cors: { origin: process.env.CORS_ORIGIN, methods: ["GET", "POST"] },
 });
 
 const { PeerServer } = require("peer");

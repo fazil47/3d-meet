@@ -11,6 +11,7 @@
   "author": "Fazil Babu",
   "license": "ISC",
   "dependencies": {
+    "dotenv": "^16.0.2",
     "express": "^4.18.1",
     "peer": "^0.6.1",
     "socket.io": "^4.5.2"
