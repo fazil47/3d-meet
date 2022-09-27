@@ -11,27 +11,17 @@ import {
   DirectionalLight,
   HemisphericLight,
   ShadowGenerator,
-  PointLight,
-  SpotLight,
   StandardMaterial,
   Color3,
   CubeTexture,
   Texture,
-  VirtualJoystick,
-  Matrix,
-  Axis,
   FreeCameraVirtualJoystickInput,
   Sound,
-  Mesh,
-  CreateCapsule,
+  AbstractMesh,
+  AnimationGroup,
+  Nullable,
 } from "@babylonjs/core";
-import {
-  AdvancedDynamicTexture,
-  Control,
-  Ellipse,
-  Button,
-  InputText,
-} from "@babylonjs/gui";
+import { AdvancedDynamicTexture, Control, InputText } from "@babylonjs/gui";
 import Assets from "@babylonjs/assets";
 
 // Imports for multiuser support
@@ -46,13 +36,32 @@ import EntryGUI from "./ui/EntryGUI.json" assert { type: "json" };
 class Participant {
   id: string;
   name: string;
-  mesh: Mesh;
+  mesh: AbstractMesh;
+  idleAnimation: AnimationGroup | null = null;
+  walkAnimation: AnimationGroup | null = null;
+  idleTimout: number | null = null;
   voice: Sound | null;
 
-  constructor(id: string, name: string, mesh: Mesh) {
+  constructor(
+    id: string,
+    name: string,
+    mesh: AbstractMesh,
+    idleAnimation: AnimationGroup | null,
+    walkAnimation: AnimationGroup | null
+  ) {
     this.id = id;
     this.name = name;
     this.mesh = mesh;
+
+    if (idleAnimation) {
+      this.idleAnimation = idleAnimation;
+      this.idleAnimation.play();
+    }
+
+    if (walkAnimation) {
+      this.walkAnimation = walkAnimation;
+    }
+
     this.voice = null;
   }
 
@@ -61,6 +70,39 @@ class Participant {
     this.voice.attachToMesh(this.mesh);
     this.voice.setDirectionalCone(90, 180, 0);
     this.voice.setLocalDirectionToMesh(this.mesh.forward);
+  }
+
+  walkTo(position: Vector3) {
+    // If position hasn't changed, do nothing
+    if (this.mesh.position.equals(position)) {
+      return;
+    }
+
+    // If idle timeout is set, clear it
+    if (this.idleTimout) {
+      window.clearTimeout(this.idleTimout);
+    }
+
+    // Play walk animation if not already playing
+    if (this.walkAnimation && !this.walkAnimation.isPlaying) {
+      this.walkAnimation.play();
+    }
+
+    // Set idle timeout to play idle animation after 200 milliseconds
+    this.idleTimout = window.setTimeout(() => {
+      this.walkAnimation?.stop();
+      this.idleAnimation?.play();
+    }, 200);
+
+    this.mesh.position = position;
+  }
+
+  setYRotation(yRotation: number) {
+    this.mesh.rotation = new Vector3(
+      this.mesh.rotation.x,
+      yRotation,
+      this.mesh.rotation.z
+    );
   }
 
   destroy() {
@@ -81,6 +123,7 @@ export class Room {
   scene: Scene;
   canvas: HTMLCanvasElement;
   camera: FreeCamera;
+  characterModels: string[] = ["KayBear.glb", "KayDog.glb", "KayDuck.glb"];
 
   constructor() {
     // create the canvas html element and attach it to the webpage
@@ -299,13 +342,11 @@ export class Room {
           if (userId === selfPeer.id) return;
 
           if (this.peers[userId]) {
-            this.peers[userId].participant.mesh.position = new Vector3(
-              position._x,
-              position._y,
-              position._z
+            this.peers[userId].participant.walkTo(
+              new Vector3(position._x, position._y, position._z)
             );
 
-            this.peers[userId].participant.mesh.rotation.y = rotation._y;
+            this.peers[userId].participant.setYRotation(rotation._y);
           }
         }
       );
@@ -328,7 +369,7 @@ export class Room {
 
     // this.addAudioStream(this.selfPeer.id, stream);
 
-    this.selfPeer.on("call", (call) => {
+    this.selfPeer.on("call", async (call) => {
       if (this.audioStream === null) return;
 
       call.answer(this.audioStream);
@@ -342,13 +383,16 @@ export class Room {
         }
       });
 
-      const newParticipantMesh = CreateCapsule(call.peer, {}, this.scene);
-      newParticipantMesh.position = new Vector3(0, 2.5, 0);
+      const [characterMesh, idleAnimation, walkAnimation] =
+        await this.loadCharacter(call.peer);
+      characterMesh.position = new Vector3(0, 2.5, 0);
 
       const newParticipant = new Participant(
         call.peer,
         "TODO: Change this",
-        newParticipantMesh
+        characterMesh,
+        idleAnimation,
+        walkAnimation
       );
 
       this.peers[call.peer] = {
@@ -357,8 +401,8 @@ export class Room {
       };
     });
 
-    this.socket.on("user-connected", (userId) => {
-      this.connectToNewParticipant(userId);
+    this.socket.on("user-connected", async (userId) => {
+      await this.connectToNewParticipant(userId);
     });
 
     this.socket.on("user-disconnected", (userId) => {
@@ -371,7 +415,7 @@ export class Room {
     this.socket.emit("user-ready");
   }
 
-  connectToNewParticipant(participantId: string) {
+  async connectToNewParticipant(participantId: string): Promise<void> {
     if (!this.socket || !this.selfPeer || !this.audioStream) {
       return;
     }
@@ -387,13 +431,16 @@ export class Room {
       }
     });
 
-    const newParticipantMesh = CreateCapsule(participantId, {}, this.scene);
-    newParticipantMesh.position = new Vector3(0, 2.5, 0);
+    const [characterMesh, idleAnimation, walkAnimation] =
+      await this.loadCharacter(participantId);
+    characterMesh.position = new Vector3(0, 2.5, 0);
 
     const newParticipant = new Participant(
       participantId,
       "TODO: Change this",
-      newParticipantMesh
+      characterMesh,
+      idleAnimation,
+      walkAnimation
     );
 
     this.peers[participantId] = {
@@ -423,11 +470,59 @@ export class Room {
     );
   }
 
+  async loadCharacter(
+    name: string
+  ): Promise<
+    [AbstractMesh, Nullable<AnimationGroup>, Nullable<AnimationGroup>]
+  > {
+    // Select a random character from this.characterModels
+    const characterModel =
+      this.characterModels[
+        Math.floor(Math.random() * this.characterModels.length)
+      ];
+
+    const { meshes, particleSystems, skeletons, animationGroups } =
+      await SceneLoader.ImportMeshAsync(
+        "",
+        "./models/",
+        characterModel,
+        this.scene
+      );
+
+    // Manipulating the meshes only work properly if the structure of the model is same as the one in the models folder
+
+    meshes[0].name = name;
+    meshes[0].scaling = new Vector3(2, 2, 2);
+
+    meshes.slice(1, meshes.length).forEach((mesh) => {
+      mesh.position.z = 1;
+    });
+
+    const idleAnimation = animationGroups.find(
+      (ag) => ag.name === "Idle_KayKit Animated Character2"
+    );
+    const walkAnimation = animationGroups.find(
+      (ag) => ag.name === "Walk_KayKit Animated Character2"
+    );
+
+    if (idleAnimation) {
+      idleAnimation.play(true);
+    }
+
+    return [
+      meshes[0],
+      idleAnimation ? idleAnimation : null,
+      walkAnimation ? walkAnimation : null,
+    ];
+  }
+
   createDebugLayer(): void {
+    console.log("Debug layer enabled");
+
     // Toggle Inspector visibility
     window.addEventListener("keydown", (ev) => {
-      // Shift + Ctrl + Alt + I
-      if (ev.shiftKey && ev.ctrlKey && ev.altKey && ev.keyCode === 73) {
+      // TODO: Change to Shift + Ctrl + Alt + I, not working for some reason
+      if (ev.key === "i") {
         if (this.scene.debugLayer.isVisible()) {
           this.scene.debugLayer.hide();
         } else {
