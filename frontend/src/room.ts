@@ -124,6 +124,7 @@ export class Room {
   canvas: HTMLCanvasElement;
   camera: FreeCamera;
   characterModels: string[] = ["KayBear.glb", "KayDog.glb", "KayDuck.glb"];
+  selfCharacterModel: string;
 
   constructor() {
     // create the canvas html element and attach it to the webpage
@@ -146,6 +147,12 @@ export class Room {
     window.addEventListener("resize", () => {
       this.engine.resize();
     });
+
+    // Select a random character from this.characterModels
+    this.selfCharacterModel =
+      this.characterModels[
+        Math.floor(Math.random() * this.characterModels.length)
+      ];
 
     // run the main render loop
     this.engine.runRenderLoop(() => {
@@ -373,9 +380,11 @@ export class Room {
       if (this.audioStream === null) return;
 
       call.answer(this.audioStream);
+
       call.on("stream", (userAudioStream) => {
         this.addAudioStream(call.peer, userAudioStream);
       });
+
       call.on("close", () => {
         if (this.peers[call.peer]) {
           this.peers[call.peer].stream.close();
@@ -384,7 +393,7 @@ export class Room {
       });
 
       const [characterMesh, idleAnimation, walkAnimation] =
-        await this.loadCharacter(call.peer);
+        await this.loadCharacter(call.peer, call.metadata.characterModel);
       characterMesh.position = new Vector3(0, 2.5, 0);
 
       const newParticipant = new Participant(
@@ -401,8 +410,8 @@ export class Room {
       };
     });
 
-    this.socket.on("user-connected", async (userId) => {
-      await this.connectToNewParticipant(userId);
+    this.socket.on("user-connected", async (userId, userCharacter) => {
+      await this.connectToNewParticipant(userId, userCharacter);
     });
 
     this.socket.on("user-disconnected", (userId) => {
@@ -412,15 +421,20 @@ export class Room {
       }
     });
 
-    this.socket.emit("user-ready");
+    this.socket.emit("user-ready", this.selfCharacterModel);
   }
 
-  async connectToNewParticipant(participantId: string): Promise<void> {
+  async connectToNewParticipant(
+    participantId: string,
+    participantCharacterModel: string
+  ): Promise<void> {
     if (!this.socket || !this.selfPeer || !this.audioStream) {
       return;
     }
 
-    const call = this.selfPeer.call(participantId, this.audioStream);
+    const call = this.selfPeer.call(participantId, this.audioStream, {
+      metadata: { characterModel: this.selfCharacterModel },
+    });
     call.on("stream", (userAudioStream) => {
       this.addAudioStream(participantId, userAudioStream);
     });
@@ -432,7 +446,7 @@ export class Room {
     });
 
     const [characterMesh, idleAnimation, walkAnimation] =
-      await this.loadCharacter(participantId);
+      await this.loadCharacter(participantId, participantCharacterModel);
     characterMesh.position = new Vector3(0, 2.5, 0);
 
     const newParticipant = new Participant(
@@ -471,16 +485,11 @@ export class Room {
   }
 
   async loadCharacter(
-    name: string
+    name: string,
+    characterModel: string
   ): Promise<
     [AbstractMesh, Nullable<AnimationGroup>, Nullable<AnimationGroup>]
   > {
-    // Select a random character from this.characterModels
-    const characterModel =
-      this.characterModels[
-        Math.floor(Math.random() * this.characterModels.length)
-      ];
-
     const { meshes, particleSystems, skeletons, animationGroups } =
       await SceneLoader.ImportMeshAsync(
         "",

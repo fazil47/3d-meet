@@ -15,10 +15,10 @@ io.on("connection", (socket) => {
 
     socket.join(roomId);
 
-    socket.on("user-ready", () => {
+    socket.on("user-ready", (userCharacter) => {
       console.log(`User ${userId} is ready`);
 
-      socket.broadcast.to(roomId).emit("user-connected", userId);
+      socket.broadcast.to(roomId).emit("user-connected", userId, userCharacter);
     });
 
     socket.on("disconnect", () => {
