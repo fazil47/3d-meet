@@ -320,7 +320,11 @@ export class Room {
 
   setupConnection(): [Socket, Peer] {
     // Connect to websocket server
-    const socket = io(process.env.SOCKET_SERVER_URL || "http://localhost:3000");
+    const socket = io(
+      process.env.SOCKET_SERVER_URL
+        ? process.env.SOCKET_SERVER_URL
+        : "http://localhost:3000"
+    );
 
     // Remove participant from scene when they disconnect
     socket.on("user-disconnected", (userId) => {
@@ -332,8 +336,12 @@ export class Room {
 
     // Connect to peer server
     const selfPeer = new Peer({
-      host: process.env.PEER_SERVER_HOST || "localhost",
-      port: parseInt(process.env.PEER_SERVER_PORT || "9000"),
+      host: process.env.PEER_SERVER_HOST
+        ? process.env.PEER_SERVER_HOST
+        : "localhost",
+      port: parseInt(
+        process.env.PEER_SERVER_PORT ? process.env.PEER_SERVER_PORT : "9000"
+      ),
     });
 
     // Setup peer object event listeners
