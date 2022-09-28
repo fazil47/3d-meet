@@ -25,12 +25,12 @@ module.exports = {
     ],
   },
   plugins: [
+    new dotEnv(),
     new HtmlWebpackPlugin({
       inject: true,
       template: path.resolve(appDirectory, "public/index.html"),
       filename: "index.html",
     }),
-    new dotEnv(),
   ],
   output: {
     filename: "js/bundle.js", //name for the js file that is created/compiled in memory
