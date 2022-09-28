@@ -8,9 +8,6 @@ const io = require("socket.io")(server, {
   cors: { origin: process.env.CORS_ORIGIN, methods: ["GET", "POST"] },
 });
 
-const { PeerServer } = require("peer");
-const peerServer = PeerServer({ port: 3001, path: "" });
-
 io.on("connection", (socket) => {
   socket.on("join-room", (roomId, userId) => {
     console.log(`User ${userId} joined room ${roomId}`);

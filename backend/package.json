@@ -1,11 +1,11 @@
 {
-  "name": "2.5d-meet",
+  "name": "3d-meet",
   "version": "1.0.0",
-  "description": "Backend for 2.5D Meet",
+  "description": "Backend for 3D Meet",
   "main": "index.js",
   "scripts": {
-    "start": "nodemon server.js",
-    "prod": "node server.js"
+    "start": "node server.js",
+    "dev": "nodemon server.js"
   },
   "keywords": [],
   "author": "Fazil Babu",
