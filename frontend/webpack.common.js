@@ -5,6 +5,10 @@ const HtmlWebpackPlugin = require("html-webpack-plugin");
 
 const appDirectory = fs.realpathSync(process.cwd());
 
+console.log(`SOCKET_SERVER_URL = ${process.env.SOCKET_SERVER_URL}`);
+console.log(`PEER_SERVER_HOST = ${process.env.PEER_SERVER_HOST}`);
+console.log(`PEER_SERVER_PORT = ${process.env.PEER_SERVER_PORT}`);
+
 module.exports = {
   entry: path.resolve(appDirectory, "src/app.ts"), //path to the main .ts file
   resolve: {
