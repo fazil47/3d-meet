@@ -1,6 +1,8 @@
+require("dotenv").config();
+
 const path = require("path");
+const webpack = require("webpack");
 const fs = require("fs");
-const dotEnv = require("dotenv-webpack");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 
 const appDirectory = fs.realpathSync(process.cwd());
@@ -25,11 +27,13 @@ module.exports = {
     ],
   },
   plugins: [
-    new dotEnv(),
     new HtmlWebpackPlugin({
       inject: true,
       template: path.resolve(appDirectory, "public/index.html"),
       filename: "index.html",
+    }),
+    new webpack.DefinePlugin({
+      "process.env": JSON.stringify(process.env)
     }),
   ],
   output: {
