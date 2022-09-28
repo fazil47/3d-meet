@@ -7,6 +7,7 @@ const server = require("http").Server(app);
 const io = require("socket.io")(server, {
   cors: { origin: process.env.CORS_ORIGIN, methods: ["GET", "POST"] },
 });
+console.log(`CORS_ORIGIN: ${process.env.CORS_ORIGIN}`);
 
 io.on("connection", (socket) => {
   socket.on("join-room", (roomId, userId) => {
