@@ -1,7 +1,7 @@
 const path = require("path");
 const fs = require("fs");
+const dotEnv = require("dotenv-webpack");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
-
 
 const appDirectory = fs.realpathSync(process.cwd());
 
@@ -18,6 +18,10 @@ module.exports = {
         use: "ts-loader",
         exclude: /node_modules/,
       },
+      {
+        test: /\.glb/,
+        type: "asset/resource",
+      },
     ],
   },
   plugins: [
@@ -26,6 +30,7 @@ module.exports = {
       template: path.resolve(appDirectory, "public/index.html"),
       filename: "index.html",
     }),
+    new dotEnv(),
   ],
   output: {
     filename: "js/bundle.js", //name for the js file that is created/compiled in memory

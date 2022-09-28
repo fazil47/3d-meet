@@ -31,7 +31,14 @@ import { io, Socket } from "socket.io-client";
 
 import { isInPortrait, isTouchOnly } from "./utils";
 
+// Babylon.js GUI editor exports
 import EntryGUI from "./ui/EntryGUI.json" assert { type: "json" };
+
+// Meshes
+import KayBear from "./models/KayBear.glb" assert { type: "glb" };
+import KayDog from "./models/KayDog.glb" assert { type: "glb" };
+import KayDuck from "./models/KayDuck.glb" assert { type: "glb" };
+import KenneyPlayground from "./models/KenneyPlayground.glb" assert { type: "glb" };
 
 class Participant {
   id: string;
@@ -123,7 +130,7 @@ export class Room {
   scene: Scene;
   canvas: HTMLCanvasElement;
   camera: FreeCamera;
-  characterModels: string[] = ["KayBear.glb", "KayDog.glb", "KayDuck.glb"];
+  characterModels: string[] = [KayBear, KayDog, KayDuck];
   selfCharacterModel: string;
 
   constructor() {
@@ -283,8 +290,8 @@ export class Room {
     // Environment meshes
     const { meshes } = await SceneLoader.ImportMeshAsync(
       "",
-      "./models/",
-      "KenneyPlayground.glb",
+      KenneyPlayground,
+      "",
       this.scene
     );
     meshes.forEach((mesh) => {
@@ -313,7 +320,7 @@ export class Room {
 
   setupConnection(): [Socket, Peer] {
     // Connect to websocket server
-    const socket = io("ws://localhost:3000");
+    const socket = io(process.env.SOCKET_SERVER_URL || "http://localhost:3000");
 
     // Remove participant from scene when they disconnect
     socket.on("user-disconnected", (userId) => {
@@ -325,8 +332,8 @@ export class Room {
 
     // Connect to peer server
     const selfPeer = new Peer({
-      host: "localhost",
-      port: 3001,
+      host: process.env.PEER_SERVER_HOST || "localhost",
+      port: parseInt(process.env.PEER_SERVER_PORT || "3001"),
     });
 
     // Setup peer object event listeners
@@ -491,12 +498,7 @@ export class Room {
     [AbstractMesh, Nullable<AnimationGroup>, Nullable<AnimationGroup>]
   > {
     const { meshes, particleSystems, skeletons, animationGroups } =
-      await SceneLoader.ImportMeshAsync(
-        "",
-        "./models/",
-        characterModel,
-        this.scene
-      );
+      await SceneLoader.ImportMeshAsync("", characterModel, "", this.scene);
 
     // Manipulating the meshes only work properly if the structure of the model is same as the one in the models folder
 
