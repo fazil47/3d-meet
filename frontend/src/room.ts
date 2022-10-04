@@ -148,7 +148,10 @@ export class Room {
 
     this.createEnvironment();
     this.createGUI();
-    this.createDebugLayer();
+
+    if (process.env.NODE_ENV === "development") {
+      this.createDebugLayer();
+    }
 
     // Event listener to resize the babylon engine when the window is resized
     window.addEventListener("resize", () => {
@@ -540,8 +543,12 @@ export class Room {
 
     // Toggle Inspector visibility
     window.addEventListener("keydown", (ev) => {
-      // TODO: Change to Shift + Ctrl + Alt + I, not working for some reason
-      if (ev.key === "i") {
+      if (
+        ev.ctrlKey &&
+        ev.shiftKey &&
+        ev.altKey &&
+        (ev.key === "i" || ev.key === "I")
+      ) {
         if (this.scene.debugLayer.isVisible()) {
           this.scene.debugLayer.hide();
         } else {
