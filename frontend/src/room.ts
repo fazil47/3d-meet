@@ -20,6 +20,8 @@ import {
   AbstractMesh,
   AnimationGroup,
   Nullable,
+  PointLight,
+  SpotLight,
 } from "@babylonjs/core";
 import { AdvancedDynamicTexture, Control, InputText } from "@babylonjs/gui";
 import Assets from "@babylonjs/assets";
@@ -38,7 +40,7 @@ import EntryGUI from "./ui/EntryGUI.json" assert { type: "json" };
 import KayBear from "./models/KayBear.glb" assert { type: "glb" };
 import KayDog from "./models/KayDog.glb" assert { type: "glb" };
 import KayDuck from "./models/KayDuck.glb" assert { type: "glb" };
-import KenneyPlayground from "./models/KenneyPlayground.glb" assert { type: "glb" };
+import dungeonGLB from "./models/dungeon.glb" assert { type: "glb" };
 
 class Participant {
   id: string;
@@ -173,7 +175,7 @@ export class Room {
   createController(): FreeCamera {
     const camera = new FreeCamera(
       "Camera",
-      new Vector3(1.5, 2.5, -15),
+      new Vector3(1.5, 4, -15),
       this.scene
     );
     camera.setTarget(Vector3.Zero());
@@ -271,10 +273,10 @@ export class Room {
       new Vector3(0, 0, 0),
       this.scene
     );
-    light1.direction = new Vector3(-0.713, -0.328, 0.619);
+    light1.position = new Vector3(0, 12, 0);
+    light1.direction = new Vector3(0, -1, 0);
+    light1.diffuse = new Color3(193 / 255, 1, 235 / 255);
     light1.intensity = 2;
-    light1.shadowEnabled = true;
-    const shadowGenerator1 = new ShadowGenerator(1024, light1);
 
     // Light 2
     const light2 = new HemisphericLight(
@@ -282,25 +284,59 @@ export class Room {
       new Vector3(0, 0, 0),
       this.scene
     );
-    light2.intensity = 0.5;
+    light2.intensity = 0.1;
+
+    // Lights 3 and 4 are the light from the torches
+    const light3 = new PointLight(
+      "light3",
+      new Vector3(13, 3.8, -4.7),
+      this.scene
+    );
+    light3.intensity = 50;
+    light3.diffuse = new Color3(1, 0.5, 0);
+
+    const light4 = new PointLight(
+      "light4",
+      new Vector3(13, 3.8, 4.7),
+      this.scene
+    );
+    light4.intensity = 50;
+    light4.diffuse = new Color3(1, 0.5, 0);
+
+    // light3.shadowEnabled = true;
+    // const shadowGenerator1 = new ShadowGenerator(1024, light3);
 
     // Gravity and collision
     const framesPerSecond = 60;
-    const gravity = -9.81;
+    const gravity = -5;
     this.scene.gravity = new Vector3(0, gravity / framesPerSecond, 0);
     this.scene.collisionsEnabled = true;
 
     // Environment meshes
     const { meshes } = await SceneLoader.ImportMeshAsync(
       "",
-      KenneyPlayground,
+      dungeonGLB,
       "",
       this.scene
     );
     meshes.forEach((mesh) => {
-      mesh.checkCollisions = true;
-      mesh.receiveShadows = true;
-      shadowGenerator1.addShadowCaster(mesh);
+      if (mesh.name.split(".")[0] === "Collider") {
+        try {
+          mesh.checkCollisions = true;
+          mesh.visibility = 0;
+        } catch (e) {
+          console.log(e);
+        }
+      }
+      // else if (mesh.name.split(".")[0] === "CastShadow") {
+      //   try {
+      //     mesh.receiveShadows = true;
+      //   } catch (e) {
+      //     console.log(e);
+      //   }
+
+      //   shadowGenerator1.addShadowCaster(mesh);
+      // }
     });
 
     // Skybox
@@ -312,13 +348,23 @@ export class Room {
     const skyboxMaterial = new StandardMaterial("skyBox", this.scene);
     skyboxMaterial.backFaceCulling = false;
     skyboxMaterial.reflectionTexture = new CubeTexture(
-      Assets.skyboxes.skybox_nx_jpg.rootUrl + "skybox",
-      this.scene
+      Assets.skyboxes.space_back_jpg.rootUrl + "space",
+      this.scene,
+      [
+        "_left.jpg",
+        "_up.jpg",
+        "_front.jpg",
+        "_right.jpg",
+        "_down.jpg",
+        "_back.jpg",
+      ]
     );
     skyboxMaterial.reflectionTexture.coordinatesMode = Texture.SKYBOX_MODE;
     skyboxMaterial.diffuseColor = new Color3(0, 0, 0);
     skyboxMaterial.specularColor = new Color3(0, 0, 0);
     skybox.material = skyboxMaterial;
+
+    // skybox.rotate(new Vector3(1, 0, 0), Math.PI / 2);
   }
 
   setupConnection(): [Socket, Peer] {
