@@ -278,18 +278,18 @@ export class Room {
     light1.diffuse = new Color3(193 / 255, 1, 235 / 255);
     light1.intensity = 2;
 
-    // Light 2
-    const light2 = new HemisphericLight(
+    // Lights 2, 3 and 4 are the light from the torches
+    const light2 = new PointLight(
       "light2",
-      new Vector3(0, 0, 0),
+      new Vector3(13, 3.8, -4.7),
       this.scene
     );
-    light2.intensity = 0.1;
+    light2.intensity = 50;
+    light2.diffuse = new Color3(1, 0.5, 0);
 
-    // Lights 3 and 4 are the light from the torches
     const light3 = new PointLight(
       "light3",
-      new Vector3(13, 3.8, -4.7),
+      new Vector3(13, 3.8, 4.7),
       this.scene
     );
     light3.intensity = 50;
@@ -297,7 +297,7 @@ export class Room {
 
     const light4 = new PointLight(
       "light4",
-      new Vector3(13, 3.8, 4.7),
+      new Vector3(13, 8, 0),
       this.scene
     );
     light4.intensity = 50;
