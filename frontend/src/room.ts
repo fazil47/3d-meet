@@ -22,6 +22,7 @@ import {
   Nullable,
   PointLight,
   SpotLight,
+  DefaultRenderingPipeline,
 } from "@babylonjs/core";
 import { AdvancedDynamicTexture, Control, InputText } from "@babylonjs/gui";
 import Assets from "@babylonjs/assets";
@@ -34,7 +35,7 @@ import { io, Socket } from "socket.io-client";
 import { isInPortrait, isTouchOnly } from "./utils";
 
 // Babylon.js GUI editor exports
-import EntryGUI from "./ui/EntryGUI.json" assert { type: "json" };
+import GoFullScreenGUI from "./ui/GoFullScreenGUI.json" assert { type: "json" };
 
 // Meshes
 import KayBear from "./models/KayBear.glb" assert { type: "glb" };
@@ -135,7 +136,9 @@ export class Room {
   characterModels: string[] = [KayBear, KayDog, KayDuck];
   selfCharacterModel: string;
 
-  constructor() {
+  constructor(userName: string, roomId: string) {
+    this.roomId = roomId;
+
     // create the canvas html element and attach it to the webpage
     this.canvas = document.createElement("canvas");
     this.canvas.style.width = "100%";
@@ -147,6 +150,9 @@ export class Room {
     this.engine = new Engine(this.canvas, true);
     this.scene = new Scene(this.engine);
     this.camera = this.createController();
+
+    // Setup connections
+    [this.socket, this.selfPeer] = this.setupConnection();
 
     this.createEnvironment();
     this.createGUI();
@@ -210,16 +216,14 @@ export class Room {
   createGUI(): void {
     const adt = AdvancedDynamicTexture.CreateFullscreenUI("UI");
 
-    adt.parseSerializedObject(EntryGUI);
-    const entryGUI = adt.getControlByName("EntryGUI") as Control;
-
-    // Get a reference to the RoomIdInput control to later set roomId
-    const roomIdInput = adt.getControlByName("RoomIdInput") as InputText;
+    adt.parseSerializedObject(GoFullScreenGUI);
+    const fullScreenGUI = adt.getControlByName("GoFullScreenGUI") as Control;
 
     // Show landscape instruction only on touch only devices
     const landscapeInstructionText = adt.getControlByName(
       "LandscapeInstructionText"
     ) as Control;
+
     if (landscapeInstructionText) {
       if (!isTouchOnly()) {
         landscapeInstructionText.isVisible = false;
@@ -232,16 +236,9 @@ export class Room {
       }
     }
 
-    const enterButton = adt.getControlByName("EnterButton");
+    const enterButton = adt.getControlByName("FullScreenButton");
     if (enterButton) {
       enterButton.onPointerClickObservable.add(() => {
-        // Set roomId to the value of the RoomIdInput control
-        if (roomIdInput && roomIdInput.text !== roomIdInput.promptMessage) {
-          this.roomId = roomIdInput.text;
-        } else {
-          this.roomId = uuidV4();
-        }
-
         // Go into fullscreen
         document.documentElement.requestFullscreen();
 
@@ -257,15 +254,13 @@ export class Room {
         }
 
         // Hide entry GUI
-        entryGUI.isVisible = false;
-
-        [this.socket, this.selfPeer] = this.setupConnection();
+        fullScreenGUI.isVisible = false;
       });
     }
   }
 
   async createEnvironment(): Promise<void> {
-    this.scene.shadowsEnabled = true;
+    // this.scene.shadowsEnabled = true;
 
     // Light 1
     const light1 = new DirectionalLight(
@@ -275,36 +270,25 @@ export class Room {
     );
     light1.position = new Vector3(0, 12, 0);
     light1.direction = new Vector3(0, -1, 0);
-    light1.diffuse = new Color3(193 / 255, 1, 235 / 255);
-    light1.intensity = 2;
+    light1.diffuse = new Color3(1, 0.34, 0.151);
+    light1.intensity = 0.5;
 
-    // Lights 2, 3 and 4 are the light from the torches
-    const light2 = new PointLight(
+    const light2 = new HemisphericLight(
       "light2",
-      new Vector3(13, 3.8, -4.7),
+      new Vector3(0, 0.5, 0.5),
       this.scene
     );
-    light2.intensity = 50;
-    light2.diffuse = new Color3(1, 0.5, 0);
+    light2.intensity = 0.25;
+    light2.diffuse = new Color3(1, 0.34, 0.151);
 
     const light3 = new PointLight(
       "light3",
-      new Vector3(13, 3.8, 4.7),
+      new Vector3(12.71, 2.7, 0),
       this.scene
     );
-    light3.intensity = 50;
-    light3.diffuse = new Color3(1, 0.5, 0);
-
-    const light4 = new PointLight(
-      "light4",
-      new Vector3(13, 8, 0),
-      this.scene
-    );
-    light4.intensity = 50;
-    light4.diffuse = new Color3(1, 0.5, 0);
-
-    // light3.shadowEnabled = true;
-    // const shadowGenerator1 = new ShadowGenerator(1024, light3);
+    light3.diffuse = new Color3(1, 0.34, 0.151);
+    light3.intensity = 80;
+    // const shadowGenerator = new ShadowGenerator(512, light3);
 
     // Gravity and collision
     const framesPerSecond = 60;
@@ -327,15 +311,17 @@ export class Room {
         } catch (e) {
           console.log(e);
         }
+      } else if (mesh.name.split(".")[0] === "IgnorePointLight") {
+        light3.excludedMeshes.push(mesh);
       }
-      // else if (mesh.name.split(".")[0] === "CastShadow") {
-      //   try {
-      //     mesh.receiveShadows = true;
-      //   } catch (e) {
-      //     console.log(e);
-      //   }
+      // else if (mesh.name.split(".")[0] !== "CastShadow") {
+      //   // shadowGenerator.addShadowCaster(mesh);
+      // }
 
-      //   shadowGenerator1.addShadowCaster(mesh);
+      // try {
+      //   mesh.receiveShadows = true;
+      // } catch (e) {
+      //   console.log(e);
       // }
     });
 
@@ -347,6 +333,10 @@ export class Room {
     );
     const skyboxMaterial = new StandardMaterial("skyBox", this.scene);
     skyboxMaterial.backFaceCulling = false;
+    // skyboxMaterial.reflectionTexture = new CubeTexture(
+    //   Assets.skyboxes.TropicalSunnyDay_nx_jpg.rootUrl + "TropicalSunnyDay",
+    //   this.scene
+    // );
     skyboxMaterial.reflectionTexture = new CubeTexture(
       Assets.skyboxes.space_back_jpg.rootUrl + "space",
       this.scene,
@@ -362,9 +352,10 @@ export class Room {
     skyboxMaterial.reflectionTexture.coordinatesMode = Texture.SKYBOX_MODE;
     skyboxMaterial.diffuseColor = new Color3(0, 0, 0);
     skyboxMaterial.specularColor = new Color3(0, 0, 0);
+    skyboxMaterial.emissiveColor = new Color3(0, 0, 0);
     skybox.material = skyboxMaterial;
 
-    // skybox.rotate(new Vector3(1, 0, 0), Math.PI / 2);
+    skybox.rotate(new Vector3(1, 0, 0), Math.PI / 2);
   }
 
   setupConnection(): [Socket, Peer] {
