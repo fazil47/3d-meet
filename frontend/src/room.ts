@@ -309,7 +309,16 @@ export class Room {
           mesh.checkCollisions = true;
           mesh.visibility = 0;
         } catch (e) {
-          console.log(e);
+          if (
+            e instanceof TypeError &&
+            process.env.NODE_ENV === "development"
+          ) {
+            console.log(
+              `Instanced mesh ${mesh.name}'s collider is already enabled`
+            );
+          } else {
+            console.log(e);
+          }
         }
       } else if (mesh.name.split(".")[0] === "IgnorePointLight") {
         light3.excludedMeshes.push(mesh);

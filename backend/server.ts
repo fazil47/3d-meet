@@ -1,10 +1,15 @@
-require("dotenv").config();
+import { config as dotenvConfig } from "dotenv";
+import Express from "express";
+import { Server as HttpServer } from "http";
+import { Socket, Server as SocketServer } from "socket.io";
 
-const express = require("express");
-const app = express();
+dotenvConfig();
 
-const server = require("http").Server(app);
-const io = require("socket.io")(server, {
+const app = Express();
+
+const server = new HttpServer(app);
+
+const io = new SocketServer(server, {
   cors: {
     origin: process.env.CORS_ORIGIN
       ? process.env.CORS_ORIGIN
@@ -12,9 +17,10 @@ const io = require("socket.io")(server, {
     methods: ["GET", "POST"],
   },
 });
+
 console.log(`CORS_ORIGIN: ${process.env.CORS_ORIGIN}`);
 
-io.on("connection", (socket) => {
+io.on("connection", (socket: Socket) => {
   socket.on("join-room", (roomId, userId) => {
     console.log(`User ${userId} joined room ${roomId}`);
 
