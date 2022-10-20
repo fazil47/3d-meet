@@ -2,6 +2,7 @@ import { config as dotenvConfig } from "dotenv";
 import Express from "express";
 import { Server as HttpServer } from "http";
 import { Socket, Server as SocketServer } from "socket.io";
+import { connect as MongooseConnect } from "mongoose";
 
 dotenvConfig();
 
