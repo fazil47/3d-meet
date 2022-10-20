@@ -13,10 +13,12 @@
   "dependencies": {
     "dotenv": "^16.0.2",
     "express": "^4.18.1",
+    "mongoose": "^6.6.5",
     "peer": "^0.6.1",
     "socket.io": "^4.5.2"
   },
   "devDependencies": {
+    "eslint": "^8.25.0",
     "nodemon": "^2.0.19"
   }
 }
