@@ -10,7 +10,6 @@ import {
   FreeCamera,
   DirectionalLight,
   HemisphericLight,
-  ShadowGenerator,
   StandardMaterial,
   Color3,
   CubeTexture,
@@ -21,14 +20,11 @@ import {
   AnimationGroup,
   Nullable,
   PointLight,
-  SpotLight,
-  DefaultRenderingPipeline,
 } from "@babylonjs/core";
-import { AdvancedDynamicTexture, Control, InputText } from "@babylonjs/gui";
+import { AdvancedDynamicTexture, Control } from "@babylonjs/gui";
 import Assets from "@babylonjs/assets";
 
 // Imports for multiuser support
-import { v4 as uuidV4 } from "uuid";
 import { Peer, MediaConnection } from "peerjs";
 import { io, Socket } from "socket.io-client";
 
@@ -122,7 +118,7 @@ class Participant {
 }
 
 export class Room {
-  roomId: string = "";
+  roomId = "";
   socket: Socket | null = null;
   selfPeer: Peer | null = null;
   audioStream: MediaStream | null = null;
@@ -554,11 +550,11 @@ export class Room {
   ): Promise<
     [AbstractMesh, Nullable<AnimationGroup>, Nullable<AnimationGroup>]
   > {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { meshes, particleSystems, skeletons, animationGroups } =
       await SceneLoader.ImportMeshAsync("", characterModel, "", this.scene);
 
     // Manipulating the meshes only work properly if the structure of the model is same as the one in the models folder
-
     meshes[0].name = name;
     meshes[0].scaling = new Vector3(2, 2, 2);
 
