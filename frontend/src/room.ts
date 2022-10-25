@@ -46,6 +46,7 @@ class Participant {
   idleAnimation: AnimationGroup | null = null;
   walkAnimation: AnimationGroup | null = null;
   idleTimout: number | null = null;
+  lerpInterval: number | null = null;
   voice: Sound | null;
 
   constructor(
@@ -100,7 +101,26 @@ class Participant {
       this.idleAnimation?.play();
     }, 200);
 
-    this.mesh.position = position;
+    this.lerpToPosition(position, 100);
+  }
+
+  lerpToPosition(position: Vector3, milliseconds: number) {
+    let progress = 0;
+    const increment = 0.1;
+    const intervalTime = milliseconds / (1 / increment);
+
+    this.lerpInterval = window.setInterval(() => {
+      if (
+        this.mesh.position.equalsWithEpsilon(position, 0.1) &&
+        this.lerpInterval
+      ) {
+        window.clearInterval(this.lerpInterval);
+        return;
+      }
+
+      this.mesh.position = Vector3.Lerp(this.mesh.position, position, progress);
+      progress += increment;
+    }, intervalTime);
   }
 
   setYRotation(yRotation: number) {
