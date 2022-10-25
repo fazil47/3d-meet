@@ -45,7 +45,6 @@ class Participant {
   mesh: AbstractMesh;
   idleAnimation: AnimationGroup | null = null;
   walkAnimation: AnimationGroup | null = null;
-  idleTimout: number | null = null;
   lerpTargetPosition: Vector3 | null = null;
   voice: Sound | null;
 
@@ -85,11 +84,6 @@ class Participant {
       this.lerpTargetPosition === null ||
       this.mesh.position.equalsWithEpsilon(this.lerpTargetPosition, 0.1)
     ) {
-      if (this.idleTimout) {
-        window.clearTimeout(this.idleTimout);
-        this.idleTimout = null;
-      }
-
       if (this.walkAnimation && this.walkAnimation.isPlaying) {
         this.walkAnimation.stop();
         this.idleAnimation?.play();
@@ -111,21 +105,10 @@ class Participant {
       return;
     }
 
-    // If idle timeout is set, clear it
-    if (this.idleTimout) {
-      window.clearTimeout(this.idleTimout);
-    }
-
     // Play walk animation if not already playing
     if (this.walkAnimation && !this.walkAnimation.isPlaying) {
       this.walkAnimation.play();
     }
-
-    // Set idle timeout to play idle animation after 200 milliseconds
-    this.idleTimout = window.setTimeout(() => {
-      this.walkAnimation?.stop();
-      this.idleAnimation?.play();
-    }, 200);
 
     this.lerpTargetPosition = position;
   }
@@ -398,9 +381,7 @@ export class Room {
   setupConnection(): [Socket, Peer] {
     // Connect to websocket server
     const socket = io(
-      process.env.SOCKET_SERVER_URL
-        ? process.env.SOCKET_SERVER_URL
-        : "http://localhost:3000"
+      process.env.SERVER_URL ? process.env.SERVER_URL : "http://localhost:3000"
     );
 
     // Remove participant from scene when they disconnect
@@ -425,14 +406,14 @@ export class Room {
     selfPeer.on("open", (id) => {
       socket.emit("join-room", this.roomId, id);
 
-      // Send this user's position and rotation to the server every 1/60 s
+      // Send this user's position and rotation to the server every 1/20 s
       setInterval(() => {
         socket.emit(
           "client-update",
           this.camera.position,
           this.camera.rotation
         );
-      }, 1000 / 60);
+      }, 1000 / 20);
 
       // Receive other users' position and rotation from the server
       socket.on(
