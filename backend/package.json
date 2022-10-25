@@ -12,8 +12,11 @@
   "author": "Fazil Babu",
   "license": "ISC",
   "dependencies": {
+    "@types/jsonwebtoken": "^8.5.9",
+    "cors": "^2.8.5",
     "dotenv": "^16.0.2",
     "express": "^4.18.1",
+    "jsonwebtoken": "^8.5.1",
     "mongoose": "^6.6.5",
     "peer": "^0.6.1",
     "socket.io": "^4.5.2"

@@ -21,50 +21,66 @@
             height: 100%;
         }
 
-        #joining-screen {
-            position: absolute;
-            top: 0;
-            left: 0;
+        #prescreen {
             width: 100%;
             height: 100%;
             display: flex;
+            flex-direction: column;
+            align-items: center;
             gap: 20px;
+        }
+
+        #header {
+            width: 100%;
+            text-align: center;
+        }
+
+        #content {
+            width: 100%;
+            display: flex;
             justify-content: center;
             align-items: center;
             flex-direction: column;
         }
 
-        #joining-form {
+        #footer {
+            width: 100%;
+            padding: 10px;
+            bottom: 0;
+            text-align: center;
+        }
+
+        #content>form {
             width: 80%;
             max-width: 400px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
             background-color: #f7f7f7;
             border-radius: 5px;
             padding: 20px;
-            display: grid;
+            display: none;
             grid-template-columns: 1fr;
             grid-gap: 25px;
         }
 
-        .joining-form-input-group {
+        .form-input-group {
             display: grid;
             grid-template-columns: 1fr;
             grid-gap: 5px;
         }
 
-        .joining-form-input-group > label {
+        .form-input-group>label {
             font-size: 1.2rem;
         }
 
-        .joining-form-input-group > input {
+        .form-input-group>input {
             padding: 10px;
             border: 1px solid #e9e9e9;
             border-radius: 5px;
             font-size: 1.2rem;
         }
 
-        .joining-form-input-group > input[type="submit"] {
-            padding: 10px;
+        .form-input-group>input[type="submit"] {
+            padding: 5px;
             border: none;
             border-radius: 5px;
             font-size: 1.2rem;
@@ -73,37 +89,78 @@
             cursor: pointer;
         }
 
-        .joining-form-input-group > input[type="submit"]:hover {
+        .form-input-group>input[type="submit"]:hover {
             background-color: #144d97;
         }
 
         a {
             color: #1b66ca;
             text-decoration: none;
+            cursor: pointer;
         }
     </style>
 </head>
 
 <body>
-    <div id="joining-screen">
-        <form id="joining-form">
-            <div class="joining-form-input-group">
-                <label for="name">Name</label>
-                <input required type="text" id="name" name="name" placeholder="Enter Name">
-            </div>
-            <div class="joining-form-input-group">
-                <label for="room">Room ID</label>
-                <input required type="text" id="room" name="room" placeholder="Enter Room ID">
-            </div>
-            <div class="joining-form-input-group">
-                <input type="submit" value="Join">
-            </div>
-        </form>
-        <div>
+    <div id="prescreen">
+        <header id="header">
+            <h1>3D Meet</h1>
+        </header>
+        <section id="content">
+            <form id="register-form">
+                <div class="form-input-group">
+                    <label for="register-name">Username</label>
+                    <input required type="text" id="register-name" name="username" placeholder="Enter Name">
+                </div>
+                <div class="form-input-group">
+                    <label for="register-email">Email</label>
+                    <input required type="email" id="register-email" name="email" placeholder="Enter Email">
+                </div>
+                <div class="form-input-group">
+                    <label for="register-password">Password</label>
+                    <input required type="password" id="register-password" name="password" placeholder="Enter Password">
+                </div>
+                <div class="form-input-group">
+                    <input type="submit" value="Register">
+                </div>
+                <div>
+                    <p>Already have an account? <a id="login-link">Login</a></p>
+                </div>
+            </form>
+            <form id="login-form">
+                <div class="form-input-group">
+                    <label for="login-email">Email</label>
+                    <input required type="email" id="login-email" name="email" placeholder="Enter Email">
+                </div>
+                <div class="form-input-group">
+                    <label for="login-password">Password</label>
+                    <input required type="password" id="login-password" name="password" placeholder="Enter Password">
+                </div>
+                <div class="form-input-group">
+                    <input type="submit" value="Login">
+                </div>
+                <div>
+                    <p>Don't have an account? <a id="register-link">Register</a></p>
+                </div>
+            </form>
+            <form id="joining-form">
+                <div class="form-input-group">
+                    <label for="room">Room ID</label>
+                    <input required type="text" id="joining-room" name="room" placeholder="Enter Room ID">
+                </div>
+                <div class="form-input-group">
+                    <input type="submit" value="Join">
+                </div>
+                <div>
+                    <p><span id="user-email-display"></span> <a id="user-logout-button">Log Out</a></p>
+                </div>
+            </form>
+        </section>
+        <footer id="footer">
             <p>
-                Made with ❤️ by <a href="https://github.com/fazil47">Fazil Babu</a>.
+                Made with ❤️ by <a href="https://github.com/fazil47/3d-meet">Fazil Babu</a>.
             </p>
-        </div>
+        </footer>
     </div>
 </body>
 
