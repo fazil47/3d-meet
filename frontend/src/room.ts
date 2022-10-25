@@ -46,6 +46,7 @@ class Participant {
   idleAnimation: AnimationGroup | null = null;
   walkAnimation: AnimationGroup | null = null;
   lerpTargetPosition: Vector3 | null = null;
+  lerpTargetYRotation: number | null = null;
   voice: Sound | null;
 
   constructor(
@@ -88,15 +89,28 @@ class Participant {
         this.walkAnimation.stop();
         this.idleAnimation?.play();
       }
-
-      return;
+    } else {
+      this.mesh.position = Vector3.Lerp(
+        this.mesh.position,
+        this.lerpTargetPosition,
+        0.2
+      );
     }
 
-    this.mesh.position = Vector3.Lerp(
-      this.mesh.position,
-      this.lerpTargetPosition,
-      0.2
-    );
+    if (
+      this.lerpTargetYRotation !== null &&
+      Math.abs(this.mesh.rotation.y - this.lerpTargetYRotation) > 0.05
+    ) {
+      this.mesh.rotation = Vector3.Lerp(
+        this.mesh.rotation,
+        new Vector3(
+          this.mesh.rotation.x,
+          this.lerpTargetYRotation,
+          this.mesh.rotation.z
+        ),
+        0.2
+      );
+    }
   }
 
   walkTo(position: Vector3) {
@@ -114,11 +128,7 @@ class Participant {
   }
 
   setYRotation(yRotation: number) {
-    this.mesh.rotation = new Vector3(
-      this.mesh.rotation.x,
-      yRotation,
-      this.mesh.rotation.z
-    );
+    this.lerpTargetYRotation = yRotation;
   }
 
   destroy() {
