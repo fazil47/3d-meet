@@ -46,7 +46,7 @@ class Participant {
   idleAnimation: AnimationGroup | null = null;
   walkAnimation: AnimationGroup | null = null;
   idleTimout: number | null = null;
-  lerpInterval: number | null = null;
+  lerpTargetPosition: Vector3 | null = null;
   voice: Sound | null;
 
   constructor(
@@ -79,9 +79,35 @@ class Participant {
     this.voice.setLocalDirectionToMesh(this.mesh.forward);
   }
 
+  // This needs to be called every frame
+  update() {
+    if (
+      this.lerpTargetPosition === null ||
+      this.mesh.position.equalsWithEpsilon(this.lerpTargetPosition, 0.1)
+    ) {
+      if (this.idleTimout) {
+        window.clearTimeout(this.idleTimout);
+        this.idleTimout = null;
+      }
+
+      if (this.walkAnimation && this.walkAnimation.isPlaying) {
+        this.walkAnimation.stop();
+        this.idleAnimation?.play();
+      }
+
+      return;
+    }
+
+    this.mesh.position = Vector3.Lerp(
+      this.mesh.position,
+      this.lerpTargetPosition,
+      0.2
+    );
+  }
+
   walkTo(position: Vector3) {
     // If position hasn't changed, do nothing
-    if (this.mesh.position.equals(position)) {
+    if (this.mesh.position.equalsWithEpsilon(position, 0.1)) {
       return;
     }
 
@@ -101,26 +127,7 @@ class Participant {
       this.idleAnimation?.play();
     }, 200);
 
-    this.lerpToPosition(position, 100);
-  }
-
-  lerpToPosition(position: Vector3, milliseconds: number) {
-    let progress = 0;
-    const increment = 0.1;
-    const intervalTime = milliseconds / (1 / increment);
-
-    this.lerpInterval = window.setInterval(() => {
-      if (
-        this.mesh.position.equalsWithEpsilon(position, 0.1) &&
-        this.lerpInterval
-      ) {
-        window.clearInterval(this.lerpInterval);
-        return;
-      }
-
-      this.mesh.position = Vector3.Lerp(this.mesh.position, position, progress);
-      progress += increment;
-    }, intervalTime);
+    this.lerpTargetPosition = position;
   }
 
   setYRotation(yRotation: number) {
@@ -191,6 +198,11 @@ export class Room {
     // run the main render loop
     this.engine.runRenderLoop(() => {
       this.scene.render();
+
+      // Update participants
+      Object.values(this.peers).forEach((peer) => {
+        peer.participant.update();
+      });
     });
   }
 
