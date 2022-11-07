@@ -138,7 +138,9 @@ class Participant {
 }
 
 export class Room {
-  roomId = "";
+  username: string;
+  roomId: string;
+  owner: boolean;
   socket: Socket | null = null;
   selfPeer: Peer | null = null;
   audioStream: MediaStream | null = null;
@@ -152,8 +154,11 @@ export class Room {
   characterModels: string[] = [KayBear, KayDog, KayDuck];
   selfCharacterModel: string;
 
-  constructor(userName: string, roomId: string) {
+  constructor(username: string, roomId: string, owner: boolean) {
+    console.log("Username: " + username);
+    this.username = username;
     this.roomId = roomId;
+    this.owner = owner;
 
     // create the canvas html element and attach it to the webpage
     this.canvas = document.createElement("canvas");
@@ -389,6 +394,8 @@ export class Room {
   }
 
   setupConnection(): [Socket, Peer] {
+    // TODO: using username instead of id, but haven't changed it everywhere
+
     // Connect to websocket server
     const socket = io(
       process.env.SERVER_URL ? process.env.SERVER_URL : "http://localhost:3000"
@@ -402,8 +409,15 @@ export class Room {
       }
     });
 
+    // Can't join if the owner of the room hasn't connected yet
+    socket.on("owner-missing", () => {
+      alert(
+        `The owner of the room ${this.roomId} hasn't connected yet, connect to another room.`
+      );
+    });
+
     // Connect to peer server
-    const selfPeer = new Peer({
+    const selfPeer = new Peer(this.username, {
       host: process.env.PEER_SERVER_HOST
         ? process.env.PEER_SERVER_HOST
         : "localhost",
@@ -413,8 +427,8 @@ export class Room {
     });
 
     // Setup peer object event listeners
-    selfPeer.on("open", (id) => {
-      socket.emit("join-room", this.roomId, id);
+    selfPeer.on("open", () => {
+      socket.emit("join-room", this.roomId, this.username);
 
       // Send this user's position and rotation to the server every 1/20 s
       setInterval(() => {

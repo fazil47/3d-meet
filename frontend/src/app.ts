@@ -224,16 +224,21 @@ async function joiningFormSubmitHandler(event: SubmitEvent) {
     return;
   }
 
-  const response = await fetch(process.env.SERVER_URL + "/authorize", {
+  const response = await fetch(process.env.SERVER_URL + "/room", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: "Bearer " + localStorage.getItem("accessToken"),
     },
+    body: JSON.stringify({
+      room: room,
+    }),
   });
 
   if (response && response.ok) {
-    new Room(localStorage.getItem("username") || "ErrorUser", room);
+    const data = await response.json();
+    const owner: boolean = data.owner;
+    new Room(localStorage.getItem("username") || "ErrorUser", room, owner);
     (event.target as HTMLFormElement).style.display = "none";
     prescreenDiv.style.display = "none";
   } else {
