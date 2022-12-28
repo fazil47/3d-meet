@@ -2,7 +2,9 @@
 
 A 3D teleconferencing (voice only) app made with Babylon.js, WebSockets (socket.io) and WebRTC (peer.js).
 
-https://user-images.githubusercontent.com/18116695/197512205-831d38e6-368f-4d05-98b5-5b687601a932.mp4
+
+https://user-images.githubusercontent.com/18116695/209786392-79d3c6af-93b4-45d8-a5d6-d055d99de9b6.mp4
+
 
 ## Project Structure
 ```
